@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.2-alpha · 2026-04-30
+
+Fixes the in-app banner renderer: `MessageRenderer._showBanner` was calling
+`Overlay.of(ctx, rootOverlay: true)` from the overlay's own context, which
+fires an assertion in Flutter 3.16+ — the throw was silently swallowed by
+`_drain`'s try/catch, so banners never rendered while modals (which use
+`showDialog`) worked fine. Now reaches the overlay state directly via the
+navigator key. Surfaced on the byde app on 2026-04-30; no other behaviour
+change.
+
 ## 1.1.1-alpha · 2026-04-29
 
 Brand-positioning patch — pub.dev description and README headline updated

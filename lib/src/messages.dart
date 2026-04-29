@@ -105,7 +105,17 @@ class MessageRenderer {
     final ttlMs = (cfg['duration_ms'] as num?)?.toInt() ?? 4000;
     final position = cfg['position'] == 'top' ? 'top' : 'bottom';
     final completer = Completer<void>();
-    final overlay = Overlay.of(ctx, rootOverlay: true);
+    // Pull the overlay directly off the navigator key. Calling
+    // `Overlay.of(ctx, rootOverlay: true)` where `ctx` IS the overlay's own
+    // context fires an assertion in Flutter 3.16+ — _drain swallows the
+    // throw and the banner silently never renders. Modals weren't affected
+    // because showDialog uses the navigator path. Bug surfaced on the byde
+    // app on 2026-04-30.
+    final overlayState = _navigatorKey.currentState?.overlay;
+    if (overlayState == null) {
+      DijjiLog.w('banner: navigator overlay not ready');
+      return;
+    }
     late OverlayEntry entry;
     Timer? timeout;
 
@@ -138,7 +148,7 @@ class MessageRenderer {
         onClose: () => dismiss('manual'),
       );
     });
-    overlay.insert(entry);
+    overlayState.insert(entry);
     timeout = Timer(Duration(milliseconds: ttlMs), () => dismiss('ttl'));
     return completer.future;
   }

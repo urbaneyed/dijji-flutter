@@ -81,5 +81,5 @@ class DijjiConfig {
       : endpoint;
 }
 
-const String dijjiSdkVersion = '1.1.1-alpha';
+const String dijjiSdkVersion = '1.1.2-alpha';
 const String dijjiSdkVariant = 'flutter';
