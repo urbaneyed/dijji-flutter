@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="com.dijji.flutter">
+    <!-- Plugin code does not declare any permissions of its own. The host
+         app's manifest controls INTERNET, ACCESS_NETWORK_STATE etc. We rely
+         on the parent app having INTERNET; without it, every call fails
+         silently and the SDK no-ops, which matches the iOS behaviour. -->
+</manifest>

@@ -33,6 +33,19 @@ class DijjiConfig {
   /// existing handlers are chained, never swallowed.
   final bool captureCrashes;
 
+  /// Install the native crash handlers (NSException + POSIX signals on iOS,
+  /// `Thread.setDefaultUncaughtExceptionHandler` on Android). Catches the
+  /// pure-native crashes Dart can't see — `fatalError` / forced unwrap of
+  /// nil / `kotlin.OutOfMemoryError`. Defaults to true; turn off only if
+  /// you already ship `firebase_crashlytics` or another native reporter
+  /// that conflicts with the chained handlers.
+  final bool captureNativeCrashes;
+
+  /// Fetch the Play Install Referrer once per install (Android only). The
+  /// payload is forwarded to /t/app/install for UTM-stamped install
+  /// attribution. No-op on iOS — Apple has no equivalent API.
+  final bool captureInstallReferrer;
+
   /// Render in-app banner / bottom_sheet / modal cards from the inbox.
   /// Disable if you want to claim and render messages yourself.
   final bool renderInAppMessages;
@@ -49,6 +62,8 @@ class DijjiConfig {
     this.inboxPollInterval = const Duration(seconds: 30),
     this.maxQueueSize = 500,
     this.captureCrashes = true,
+    this.captureNativeCrashes = true,
+    this.captureInstallReferrer = true,
     this.renderInAppMessages = true,
     this.debug = false,
   });
@@ -66,5 +81,5 @@ class DijjiConfig {
       : endpoint;
 }
 
-const String dijjiSdkVersion = '1.0.0-alpha';
+const String dijjiSdkVersion = '1.1.0-alpha';
 const String dijjiSdkVariant = 'flutter';

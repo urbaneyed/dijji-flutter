@@ -6,13 +6,16 @@
 .pub/
 build/
 pubspec.lock
-# Pure-Dart package — no platform scaffolding committed.
-android/
-ios/
+# v1.1+ plugin package: android/ and ios/ are intentional source.
+# Other platforms remain ignored.
 macos/
 linux/
 windows/
 web/
+android/.gradle/
+android/build/
+ios/Pods/
+ios/.symlinks/
 .idea/
 .vscode/
 *.iml

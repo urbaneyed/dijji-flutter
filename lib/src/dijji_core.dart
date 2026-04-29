@@ -11,6 +11,7 @@ import 'inbox.dart';
 import 'lifecycle.dart';
 import 'logger.dart';
 import 'messages.dart';
+import 'native_bridge.dart';
 import 'navigator_observer.dart';
 import 'properties.dart';
 import 'queue.dart';
@@ -58,6 +59,7 @@ class Dijji {
   InboxPoller? _inbox;
   MessageRenderer? _messages;
   DijjiNavigatorObserver? _navigatorObserver;
+  NativeBridge? _native;
 
   /// Provided to the host app to attach to MaterialApp / CupertinoApp.
   /// Required for in-app message rendering — without it, the SDK has no
@@ -112,6 +114,8 @@ class Dijji {
             inboxPollInterval: cfg.inboxPollInterval,
             maxQueueSize: cfg.maxQueueSize,
             captureCrashes: cfg.captureCrashes,
+            captureNativeCrashes: cfg.captureNativeCrashes,
+            captureInstallReferrer: cfg.captureInstallReferrer,
             renderInAppMessages: cfg.renderInAppMessages,
             debug: cfg.debug,
           );
@@ -190,6 +194,36 @@ class Dijji {
       },
     );
     _lifecycle!.start();
+
+    // Native bridge — JVM/Objective-C uncaught exceptions + POSIX signals,
+    // plus Play Install Referrer on Android. Async-init so initialize()
+    // doesn't block on the platform service binding; either succeeds quietly
+    // or fails quietly. The SDK works fine without these.
+    _native = NativeBridge(transport: _transport!);
+    if (effectiveConfig.captureNativeCrashes) {
+      // ignore: discarded_futures
+      _native!.install(
+        siteKey: siteKey,
+        visitorId: _identity!.visitorId,
+        userId: _identity!.userId,
+        sessionId: _session?.id,
+        appId: _deviceContext!.appId,
+        appVersion: _deviceContext!.appVersion,
+        osVersion: _deviceContext!.osVersion,
+        deviceModel: _deviceContext!.deviceModel,
+      );
+    }
+    if (effectiveConfig.captureInstallReferrer) {
+      // ignore: discarded_futures
+      _native!.fetchInstallReferrerOnce(
+        siteKey: siteKey,
+        visitorId: _identity!.visitorId,
+        appId: _deviceContext!.appId,
+        appVersion: _deviceContext!.appVersion,
+        osVersion: _deviceContext!.osVersion,
+        deviceModel: _deviceContext!.deviceModel,
+      );
+    }
     _initialized = true;
 
     DijjiLog.d(

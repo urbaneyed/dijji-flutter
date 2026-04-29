@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.1.0-alpha · 2026-04-29
+
+The "close the gaps" release. Package is now a Flutter plugin (with Android +
+iOS scaffolding). Two-line install for users is unchanged.
+
+### Added
+- **Native crash capture (Android)** — installs a chained
+  `Thread.setDefaultUncaughtExceptionHandler` that forwards JVM/Kotlin crashes
+  (e.g. `kotlin.OutOfMemoryError`, `java.lang.NullPointerException`) to
+  `/t/app/crash` before terminating. Plugged into the existing crash
+  dashboard.
+- **Native crash capture (iOS)** — installs both `NSSetUncaughtExceptionHandler`
+  and POSIX signal handlers (SIGABRT, SIGILL, SIGSEGV, SIGFPE, SIGBUS,
+  SIGTRAP). Catches the pure-Swift crashes Dart can't see (`fatalError`,
+  forced unwrap of nil, array OOB). Marker-on-disk pattern — write inside
+  the signal handler (async-signal-safe APIs only), forward on next launch.
+- **Play Install Referrer (Android)** — fetches once per install and posts
+  to `/t/app/install` for UTM-stamped install attribution. Idempotent via
+  `SharedPreferences` flag.
+- `DijjiConfig.captureNativeCrashes` (default `true`) and
+  `DijjiConfig.captureInstallReferrer` (default `true`) for opt-out.
+
+### Changed
+- Package converted from pure-Dart library to Flutter plugin. Customers
+  upgrading from 1.0.0-alpha get the new native code automatically; no
+  pubspec changes beyond the version bump.
+
+### Removed (caveats from 1.0.0-alpha CHANGELOG)
+- ~~"Native crashes punted to v1.1"~~ — done in this release.
+- ~~"Play Install Referrer punted to v1.1"~~ — done in this release.
+
+### Known gaps
+- Carrier on iOS still null (Apple removed the API in iOS 16; will not be
+  added).
+- Symbolicated stack traces still server-side-only; raw addresses for now.
+
 ## 1.0.0-alpha · 2026-04-29
 
 Initial alpha. Pure-Dart implementation, full ingestion-protocol parity with the

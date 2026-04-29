@@ -89,6 +89,35 @@ class Transport {
     });
   }
 
+  /// /t/app/install — Play Install Referrer payload. Mirrors the Android
+  /// SDK's `postInstall` shape exactly: `install_referrer` is the raw URL
+  /// query string Google Play returns; the server parses UTM keys out of
+  /// it. Click + install timestamps are seconds-since-epoch; null when
+  /// Play didn't return them.
+  Future<bool> postInstall({
+    required String siteKey,
+    required String visitorId,
+    required String installReferrer,
+    int? clickTs,
+    int? installTs,
+    String? appId,
+    String? appVersion,
+    String? osVersion,
+    String? deviceModel,
+  }) async {
+    return _post('/t/app/install', {
+      'site': siteKey,
+      'visitor_id': visitorId,
+      'install_referrer': installReferrer,
+      if (clickTs != null) 'click_ts': clickTs,
+      if (installTs != null) 'install_ts': installTs,
+      if (appId != null) 'app_id': appId,
+      if (appVersion != null) 'app_version': appVersion,
+      if (osVersion != null) 'os_version': osVersion,
+      if (deviceModel != null) 'device_model': deviceModel,
+    });
+  }
+
   Future<bool> postToken({
     required String token,
     required String visitorId,

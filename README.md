@@ -98,10 +98,11 @@ FirebaseMessaging.onMessage.listen((msg) {
 });
 ```
 
-## Crash capture (Dart)
+## Crash capture
 
-Dart errors are captured automatically once the SDK is initialized. For full
-coverage of uncaught async errors, wrap your `main` body:
+**Dart errors** are captured automatically once the SDK is initialized
+(`FlutterError.onError`, `PlatformDispatcher.onError`). For maximum coverage
+of uncaught async errors, wrap your `main` body:
 
 ```dart
 void main() {
@@ -112,9 +113,18 @@ void main() {
 }
 ```
 
-> **Native crashes** (SIGSEGV, NSException) are not yet caught by this SDK.
-> Use `firebase_crashlytics` alongside Dijji if you need them — they share
-> nicely. v1.1 will add platform-channel hooks for native capture.
+**Native crashes** are caught by the v1.1 plugin layer:
+
+- **Android** — chained `Thread.setDefaultUncaughtExceptionHandler` (Kotlin /
+  Java uncaught exceptions, `OutOfMemoryError`, etc.).
+- **iOS** — `NSSetUncaughtExceptionHandler` plus POSIX signal handlers for
+  the pure-Swift crashes that NSException misses (`fatalError`, forced unwrap
+  of nil, array OOB). Marker-on-disk + next-launch forward, exactly the
+  pattern Sentry / Crashlytics / Bugsnag use.
+
+To opt out: `DijjiConfig(captureNativeCrashes: false)`. Useful only when you
+already ship a competing native reporter that conflicts with chained
+handlers.
 
 ## Configuration
 
@@ -130,6 +140,8 @@ await Dijji.instance.initialize(
     inboxPollInterval: Duration(seconds: 30),
     maxQueueSize: 500,                       // 50–5000
     captureCrashes: true,
+    captureNativeCrashes: true,
+    captureInstallReferrer: true,
     renderInAppMessages: true,
     debug: false,
   ),
@@ -147,10 +159,12 @@ await Dijji.instance.initialize(
 
 ## Roadmap
 
-- v1.1: Play Install Referrer (Android-side platform channel), native SIGSEGV
-  capture, opt-in IDFV/AAID for ad-attribution use cases.
-- v1.2: Pigeon-bridged shortcut to the native SDK so customers who already
-  ship `dijji-android` / `dijji-ios` can avoid duplicate event streams.
+- v1.1 (this release): Native crash capture on both platforms (NSException +
+  POSIX signals + JVM uncaught), Play Install Referrer.
+- v1.2: `dijji_firebase` companion package — one-line FCM/APNs token + push
+  handling helpers around `firebase_messaging`.
+- v1.3: Background isolate flushing, sqflite-backed durable queue, opt-in
+  IDFV/AAID for ad-attribution.
 
 ## License
 
