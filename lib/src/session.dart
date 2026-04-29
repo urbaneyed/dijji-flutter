@@ -1,6 +1,7 @@
 import 'identity.dart';
 
-typedef SessionEnqueueCallback = void Function(String name, Map<String, Object?>? props);
+typedef SessionEnqueueCallback = void Function(
+    String name, Map<String, Object?>? props);
 
 /// Session state machine — rotates `session_id` after the configured idle
 /// window. Lives entirely in memory; the server canonicalises sessions via

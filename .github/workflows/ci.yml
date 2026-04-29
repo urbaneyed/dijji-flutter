@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: analyze + test (Flutter ${{ matrix.flutter }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        flutter: ["stable", "3.24.x"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ matrix.flutter == 'stable' && 'stable' || 'stable' }}
+          flutter-version: ${{ matrix.flutter == 'stable' && '' || matrix.flutter }}
+
+      - name: Show versions
+        run: |
+          flutter --version
+          dart --version
+
+      - name: Install deps (package)
+        run: flutter pub get
+
+      - name: Install deps (example)
+        run: flutter pub get
+        working-directory: example
+
+      - name: Format check
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Analyze (package)
+        run: flutter analyze --no-fatal-infos
+
+      - name: Analyze (example)
+        run: flutter analyze --no-fatal-infos
+        working-directory: example
+
+      - name: Run tests with coverage
+        run: flutter test --coverage
+
+      - name: Upload coverage artifact
+        if: matrix.flutter == 'stable'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: warn
+
+  publish-dry-run:
+    name: pub publish --dry-run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: dart pub publish --dry-run

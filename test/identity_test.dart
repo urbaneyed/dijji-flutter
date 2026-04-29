@@ -11,7 +11,10 @@ void main() {
 
   test('first load mints a v4 UUID and persists it', () async {
     final id = await Identity.load();
-    expect(id.visitorId, matches(RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')));
+    expect(
+        id.visitorId,
+        matches(RegExp(
+            r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')));
 
     final id2 = await Identity.load();
     expect(id2.visitorId, equals(id.visitorId));

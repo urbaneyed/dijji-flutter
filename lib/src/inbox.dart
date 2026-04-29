@@ -50,7 +50,8 @@ class InboxPoller {
     if (_identity.optedOut) return;
     _polling = true;
     try {
-      final messages = await _transport.getInbox(visitorId: _identity.visitorId);
+      final messages =
+          await _transport.getInbox(visitorId: _identity.visitorId);
       if (messages.isEmpty) return;
       DijjiLog.d('inbox: ${messages.length} messages');
       _controller.add(messages);

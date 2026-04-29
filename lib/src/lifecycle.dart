@@ -38,7 +38,8 @@ class DijjiLifecycle extends WidgetsBindingObserver {
       if (!_hasFiredColdOpen) {
         _hasFiredColdOpen = true;
         _session.touch();
-        _queue.enqueue(name: 'app_open', properties: const {'cold_start': true});
+        _queue
+            .enqueue(name: 'app_open', properties: const {'cold_start': true});
         _onForeground();
       }
     });

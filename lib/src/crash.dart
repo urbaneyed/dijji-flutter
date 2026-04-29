@@ -40,7 +40,8 @@ class CrashRecorder {
   final DeviceContext _deviceContext;
   final String? Function() _sessionIdProvider;
 
-  final Queue<Map<String, Object?>> _breadcrumbs = Queue<Map<String, Object?>>();
+  final Queue<Map<String, Object?>> _breadcrumbs =
+      Queue<Map<String, Object?>>();
   FlutterExceptionHandler? _previousFlutterHandler;
   bool _installed = false;
 
@@ -84,7 +85,8 @@ class CrashRecorder {
     });
   }
 
-  void addBreadcrumb(String eventName, Map<String, Object?>? props, String? screen) {
+  void addBreadcrumb(
+      String eventName, Map<String, Object?>? props, String? screen) {
     _breadcrumbs.add({
       'ts': DateTime.now().millisecondsSinceEpoch ~/ 1000,
       'event_name': eventName,

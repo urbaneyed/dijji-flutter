@@ -153,7 +153,8 @@ class DeviceContext {
         : 'portrait';
   }
 
-  double? fontScale() => WidgetsBinding.instance.platformDispatcher.textScaleFactor;
+  double? fontScale() =>
+      WidgetsBinding.instance.platformDispatcher.textScaleFactor;
 
   Map<String, num?> screenMetrics() {
     final view = WidgetsBinding.instance.platformDispatcher.views.first;

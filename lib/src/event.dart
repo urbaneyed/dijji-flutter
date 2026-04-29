@@ -75,7 +75,8 @@ class DijjiEvent {
         // Lists of scalars only — drop on the floor if heterogeneous.
         final scalars = v
             .where((e) => e == null || e is num || e is bool || e is String)
-            .map((e) => (e is String && e.length > 500) ? e.substring(0, 500) : e)
+            .map((e) =>
+                (e is String && e.length > 500) ? e.substring(0, 500) : e)
             .toList();
         if (scalars.isNotEmpty) out[kk] = scalars;
       }

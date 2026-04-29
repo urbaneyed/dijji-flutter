@@ -18,12 +18,14 @@ import 'session.dart';
 /// reasonable fallback when the dev hasn't named them.
 class DijjiNavigatorObserver extends NavigatorObserver {
   DijjiNavigatorObserver({
-    required void Function(String name, {Map<String, Object?>? properties}) trackScreen,
+    required void Function(String name, {Map<String, Object?>? properties})
+        trackScreen,
     required Session session,
   })  : _trackScreen = trackScreen,
         _session = session;
 
-  final void Function(String name, {Map<String, Object?>? properties}) _trackScreen;
+  final void Function(String name, {Map<String, Object?>? properties})
+      _trackScreen;
   final Session _session;
 
   @override

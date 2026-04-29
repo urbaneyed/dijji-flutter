@@ -335,7 +335,8 @@ class _BannerWidgetState extends State<_BannerWidget>
                   ),
                 IconButton(
                   onPressed: widget.onClose,
-                  icon: const Icon(Icons.close, color: Color(0xFF7A7A90), size: 18),
+                  icon: const Icon(Icons.close,
+                      color: Color(0xFF7A7A90), size: 18),
                 ),
               ],
             ),
@@ -401,7 +402,8 @@ class _SheetWidget extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 8, bottom: 18),
                 child: Text(
                   body!,
-                  style: const TextStyle(color: Color(0xFFB5B5C8), height: 1.45),
+                  style:
+                      const TextStyle(color: Color(0xFFB5B5C8), height: 1.45),
                 ),
               ),
             if (cta != null && cta!.isNotEmpty)

@@ -61,8 +61,9 @@ class DijjiConfig {
     return maxQueueSize;
   }
 
-  String get sanitizedEndpoint =>
-      endpoint.endsWith('/') ? endpoint.substring(0, endpoint.length - 1) : endpoint;
+  String get sanitizedEndpoint => endpoint.endsWith('/')
+      ? endpoint.substring(0, endpoint.length - 1)
+      : endpoint;
 }
 
 const String dijjiSdkVersion = '1.0.0-alpha';

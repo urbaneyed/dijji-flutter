@@ -192,7 +192,8 @@ class Dijji {
     _lifecycle!.start();
     _initialized = true;
 
-    DijjiLog.d('initialized site=$siteKey sdk=$dijjiSdkVariant-$dijjiSdkVersion');
+    DijjiLog.d(
+        'initialized site=$siteKey sdk=$dijjiSdkVariant-$dijjiSdkVersion');
   }
 
   // ── Public API ──────────────────────────────────────────────────
