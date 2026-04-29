@@ -5,8 +5,10 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Flutter](https://img.shields.io/badge/Flutter-%E2%89%A53.10-02569B?logo=flutter)](https://flutter.dev)
 
-Analytics, engagement, and in-app messaging for Flutter apps. Two-line install.
-Full parity with the [Android](https://github.com/urbaneyed/dijji-android) and
+**Intelligence · Engagement · Defense — for Flutter.**
+The Dijji SDK replaces your analytics, crash reporter, push tooling, and
+in-app messaging stack with one dependency. Two-line install. Full parity
+with the [Android](https://github.com/urbaneyed/dijji-android) and
 [iOS](https://github.com/urbaneyed/dijji-ios) SDKs — same data model, same
 dashboard, same backend.
 

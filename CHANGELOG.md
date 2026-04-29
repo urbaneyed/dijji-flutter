@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.1-alpha · 2026-04-29
+
+Brand-positioning patch — pub.dev description and README headline updated
+to lead with the Dijji pillar framing ("Intelligence · Engagement · Defense")
+rather than the generic "analytics" category. No code changes; existing
+1.1.0-alpha consumers see no behaviour difference.
+
 ## 1.1.0-alpha · 2026-04-29
 
 The "close the gaps" release. Package is now a Flutter plugin (with Android +
