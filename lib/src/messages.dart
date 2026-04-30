@@ -254,8 +254,7 @@ class MessageRenderer {
       transitionDuration: const Duration(milliseconds: 240),
       pageBuilder: (_, __, ___) => const SizedBox.shrink(),
       transitionBuilder: (dlgCtx, anim, _, __) {
-        final scale =
-            CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
+        final scale = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
         return FadeTransition(
           opacity: anim,
           child: ScaleTransition(
@@ -285,8 +284,7 @@ class MessageRenderer {
                 });
                 Navigator.of(dlgCtx, rootNavigator: true).pop();
               },
-              onClose: () =>
-                  Navigator.of(dlgCtx, rootNavigator: true).pop(),
+              onClose: () => Navigator.of(dlgCtx, rootNavigator: true).pop(),
             ),
           ),
         );
@@ -861,7 +859,8 @@ class _HeroWidget extends StatelessWidget {
                                 end: Alignment.bottomCenter,
                                 colors: [
                                   Colors.transparent,
-                                  const Color(0xFF12121C).withValues(alpha: 0.85),
+                                  const Color(0xFF12121C)
+                                      .withValues(alpha: 0.85),
                                 ],
                               ),
                             ),
@@ -905,8 +904,7 @@ class _HeroWidget extends StatelessWidget {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: acc,
                               foregroundColor: Colors.white,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 16),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
                               textStyle: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 15,
@@ -914,16 +912,15 @@ class _HeroWidget extends StatelessWidget {
                             ),
                             child: Text(cta!),
                           ),
-                        if (secondaryCta != null &&
-                            secondaryCta!.isNotEmpty)
+                        if (secondaryCta != null && secondaryCta!.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: TextButton(
                               onPressed: onSecondary,
                               style: TextButton.styleFrom(
                                 foregroundColor: const Color(0xFF7A7A90),
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                               ),
                               child: Text(secondaryCta!),
                             ),
@@ -941,8 +938,8 @@ class _HeroWidget extends StatelessWidget {
                   shape: const CircleBorder(),
                   child: IconButton(
                     onPressed: onClose,
-                    icon: const Icon(Icons.close,
-                        color: Colors.white, size: 18),
+                    icon:
+                        const Icon(Icons.close, color: Colors.white, size: 18),
                     padding: const EdgeInsets.all(6),
                     constraints: const BoxConstraints(
                       minWidth: 32,
@@ -1087,8 +1084,7 @@ class _NpsWidgetState extends State<_NpsWidget> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                           side: BorderSide(
-                              color: color.withValues(alpha: 0.45),
-                              width: 1),
+                              color: color.withValues(alpha: 0.45), width: 1),
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(8),
@@ -1394,11 +1390,14 @@ class _CountdownWidgetState extends State<_CountdownWidget> {
                         _CountdownCell(value: '$days', label: 'd', accent: acc),
                         const _CountdownColon(),
                       ],
-                      _CountdownCell(value: _two(hours), label: 'h', accent: acc),
+                      _CountdownCell(
+                          value: _two(hours), label: 'h', accent: acc),
                       const _CountdownColon(),
-                      _CountdownCell(value: _two(mins), label: 'm', accent: acc),
+                      _CountdownCell(
+                          value: _two(mins), label: 'm', accent: acc),
                       const _CountdownColon(),
-                      _CountdownCell(value: _two(secs), label: 's', accent: acc),
+                      _CountdownCell(
+                          value: _two(secs), label: 's', accent: acc),
                     ],
                   ),
                 if (widget.body != null && widget.body!.isNotEmpty)
@@ -1421,12 +1420,9 @@ class _CountdownWidgetState extends State<_CountdownWidget> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: acc,
                         foregroundColor: Colors.white,
-                        disabledBackgroundColor:
-                            const Color(0xFF2A2A38),
-                        disabledForegroundColor:
-                            const Color(0xFF7A7A90),
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                        disabledBackgroundColor: const Color(0xFF2A2A38),
+                        disabledForegroundColor: const Color(0xFF7A7A90),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: Text(widget.cta!),
                     ),
@@ -1454,8 +1450,7 @@ class _CountdownCell extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: accent.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
