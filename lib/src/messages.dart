@@ -849,7 +849,7 @@ class _HeroWidget extends StatelessWidget {
                             imageUrl!,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => Container(
-                              color: acc.withValues(alpha: 0.18),
+                              color: acc.withOpacity(0.18),
                             ),
                           ),
                           DecoratedBox(
@@ -859,8 +859,7 @@ class _HeroWidget extends StatelessWidget {
                                 end: Alignment.bottomCenter,
                                 colors: [
                                   Colors.transparent,
-                                  const Color(0xFF12121C)
-                                      .withValues(alpha: 0.85),
+                                  const Color(0xFF12121C).withOpacity(0.85),
                                 ],
                               ),
                             ),
@@ -934,7 +933,7 @@ class _HeroWidget extends StatelessWidget {
                 top: 8,
                 right: 8,
                 child: Material(
-                  color: Colors.black.withValues(alpha: 0.35),
+                  color: Colors.black.withOpacity(0.35),
                   shape: const CircleBorder(),
                   child: IconButton(
                     onPressed: onClose,
@@ -1079,12 +1078,12 @@ class _NpsWidgetState extends State<_NpsWidget> {
                       height: cellW,
                       child: Material(
                         color: picked
-                            ? color.withValues(alpha: 0.85)
-                            : color.withValues(alpha: 0.12),
+                            ? color.withOpacity(0.85)
+                            : color.withOpacity(0.12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                           side: BorderSide(
-                              color: color.withValues(alpha: 0.45), width: 1),
+                              color: color.withOpacity(0.45), width: 1),
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(8),
@@ -1452,10 +1451,9 @@ class _CountdownCell extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.12),
+              color: accent.withOpacity(0.12),
               borderRadius: BorderRadius.circular(8),
-              border:
-                  Border.all(color: accent.withValues(alpha: 0.4), width: 1),
+              border: Border.all(color: accent.withOpacity(0.4), width: 1),
             ),
             child: Text(
               value,
