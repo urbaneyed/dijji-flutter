@@ -1,5 +1,60 @@
 # Changelog
 
+## 1.1.4-alpha · 2026-04-30
+
+Three new in-app survey/urgency formats — bringing the Flutter SDK to parity
+with the web tracker on collection-style and urgency-style messages.
+
+### Added
+- **`in_app_nps`** — 0–10 score sheet with low/high labels under a colour-graded
+  number row (red 0–6, amber 7–8, green 9–10). Tap a number, sheet flashes a
+  thank-you and auto-closes after 1.4 s. Fires `__dijji_nps_submitted` with
+  `score` (int 0–10).
+- **`in_app_reactions`** — emoji feedback bar. Accepts a `emojis` array (2–5
+  recommended, defaults to `['😍','🙂','😐','😕']` if none supplied), shows the
+  picked emoji at 56 px after submission with a thank-you line. Fires
+  `__dijji_reaction_submitted` with `reaction` (the emoji string) and `index`.
+- **`in_app_countdown`** — modal with a live-ticking deadline. Accepts:
+  - `deadline` — ISO-8601 (`2026-05-01T18:00:00Z`), relative (`+24 hours`,
+    `+30 minutes`, `+3 days`, `+2 weeks`), or unix-seconds number.
+  - Optional `image_url` (16:9 hero on top), `cta_text` / `cta_url`,
+    `ended_text` (replaces the timer when zero is reached).
+  - Renders `D : HH : MM : SS` boxes, hides the days cell when 0. Tabular
+    figures so digits don't jitter as the seconds tick. CTA disables when
+    the timer reaches zero.
+
+All three follow the same dismiss-event contract as the existing formats —
+fire `__dijji_message_dismissed` with `reason` set to one of `manual`,
+`submitted`, `cta`.
+
+## 1.1.3-alpha · 2026-04-30
+
+In-app message format upgrade — image support across all renderers and a new
+full-bleed `in_app_hero` takeover format.
+
+### Added
+- **`image_url` support on all in-app formats**:
+  - `in_app_banner` — 40×40 thumbnail rendered inside the strip alongside the
+    title/body. `BoxFit.cover` with rounded corners.
+  - `in_app_bottom_sheet` — 16:9 hero image at the top of the sheet, above the
+    title.
+  - `in_app_modal` — 16:9 image flush against the top of the modal card
+    (full-bleed under the rounded corners via `clipBehavior: Clip.antiAlias`).
+  - All renderers fail soft on broken URLs — `Image.network`'s `errorBuilder`
+    returns an empty `SizedBox` so a missing/blocked image never breaks the
+    surrounding layout.
+- **New `in_app_hero` format** — full-bleed takeover dialog with a 4:3 hero
+  image, dark gradient overlay, prominent title + body, primary CTA button,
+  optional secondary CTA (via `secondary_cta_text`), and a translucent close
+  button in the top-right. Backdrop is fully blocking; tap-outside dismisses
+  via the standard `barrierDismissible`. Centered on-screen with a max-width
+  of 420 and max-height of 86% viewport — looks right on phones and tablets.
+
+### Changed
+- `_ModalWidget` now uses `Column` + `Padding` rather than a single root
+  `Padding(child: Column)` so the hero image can sit flush against the modal
+  edges while the title/body/CTA still get their inner padding.
+
 ## 1.1.2-alpha · 2026-04-30
 
 Fixes the in-app banner renderer: `MessageRenderer._showBanner` was calling
