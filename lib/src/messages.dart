@@ -11,6 +11,7 @@ import 'logger.dart';
 ///   - **banner**: top or bottom slide-in strip, auto-dismiss after TTL.
 ///   - **bottom_sheet**: drag-to-dismiss sheet pinned to the bottom.
 ///   - **modal**: centred card with a backdrop, dismissed via X or backdrop tap.
+///   - **survey**: multi-step bottom sheet, /t/survey ingestion.
 ///
 /// Each message is queued and presented sequentially so two pushes in quick
 /// succession don't stack on top of each other. CTA taps fire a callback the
@@ -20,15 +21,32 @@ typedef MessageEventCallback = void Function(
   Map<String, Object?>? properties,
 });
 
+/// Survey transport callback — host SDK supplies the actual HTTP impl
+/// (Transport.postSurvey). MessageRenderer stays free of HTTP knowledge.
+/// Body shape: { action, site, survey_id?, response_id?, question_id?,
+/// question_type?, value?, visitor_id?, ... }. Returns server JSON.
+typedef SurveyPostCallback = Future<Map<String, Object?>?> Function(
+  Map<String, Object?> body,
+);
+
 class MessageRenderer {
   MessageRenderer({
     required GlobalKey<NavigatorState> navigatorKey,
     required MessageEventCallback onMessageEvent,
+    SurveyPostCallback? onSurveyPost,
+    String? siteKey,
+    String? visitorId,
   })  : _navigatorKey = navigatorKey,
-        _onMessageEvent = onMessageEvent;
+        _onMessageEvent = onMessageEvent,
+        _onSurveyPost = onSurveyPost,
+        _siteKey = siteKey,
+        _visitorId = visitorId;
 
   final GlobalKey<NavigatorState> _navigatorKey;
   final MessageEventCallback _onMessageEvent;
+  final SurveyPostCallback? _onSurveyPost;
+  final String? _siteKey;
+  final String? _visitorId;
   final List<Map<String, Object?>> _queue = [];
   bool _showing = false;
   StreamSubscription<List<Map<String, Object?>>>? _sub;
@@ -102,9 +120,82 @@ class MessageRenderer {
       case 'in_app_countdown':
         await _showCountdown(ctx, id, cfg);
         break;
+      case 'in_app_survey':
+        await _showSurvey(ctx, id, cfg);
+        break;
       default:
         DijjiLog.d('unknown message kind: $kind');
     }
+  }
+
+  // ── Survey — multi-step bottom sheet ────────────────────────
+
+  Future<void> _showSurvey(
+    BuildContext ctx,
+    int id,
+    Map<String, Object?> cfg,
+  ) async {
+    final surveyId = cfg['survey_id'];
+    final questionsRaw = cfg['questions'];
+    if (surveyId == null || questionsRaw is! List || questionsRaw.isEmpty) {
+      DijjiLog.d('survey config malformed (no questions)');
+      return;
+    }
+    final questions = questionsRaw
+        .whereType<Map>()
+        .map<Map<String, Object?>>(Map<String, Object?>.from)
+        .toList();
+    final endScreen = cfg['end_screen'] is Map
+        ? Map<String, Object?>.from(cfg['end_screen'] as Map)
+        : <String, Object?>{};
+
+    // START — get a response_id from the server. If it fails (e.g.
+    // already_completed / 409), bail without rendering the sheet.
+    int? responseId;
+    if (_onSurveyPost != null) {
+      final res = await _onSurveyPost!({
+        'action': 'start',
+        'site': _siteKey,
+        'survey_id': surveyId,
+        'visitor_id': _visitorId,
+        'platform': 'flutter',
+      });
+      if (res == null || res['ok'] != true) {
+        DijjiLog.d('survey start rejected: ${res?['error']}');
+        return;
+      }
+      final rid = res['response_id'];
+      if (rid is int) {
+        responseId = rid;
+      } else if (rid is String) {
+        responseId = int.tryParse(rid);
+      }
+    }
+
+    var dismissReason = 'manual';
+    await showModalBottomSheet<void>(
+      context: ctx,
+      isDismissible: true,
+      enableDrag: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SurveyWidget(
+        surveyId: surveyId is int ? surveyId : int.tryParse('$surveyId') ?? 0,
+        responseId: responseId ?? 0,
+        questions: questions,
+        endScreen: endScreen,
+        siteKey: _siteKey,
+        onSurveyPost: _onSurveyPost,
+        onCompleted: () {
+          dismissReason = 'completed';
+        },
+      ),
+    );
+    _onMessageEvent('__dijji_message_dismissed', properties: {
+      'message_id': id,
+      'kind': 'in_app_survey',
+      'reason': dismissReason,
+    });
   }
 
   // ── Banner — top or bottom strip ────────────────────────────
@@ -1492,6 +1583,499 @@ class _CountdownColon extends StatelessWidget {
           color: Color(0xFF4A4A5C),
           fontSize: 22,
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Survey ─────────────────────────────────────────────────────
+//
+// Multi-step bottom sheet. Each question is its own step; the bar at
+// the top shows progress. Posts answer-by-answer to /t/survey via
+// the parent SurveyPostCallback so the SDK keeps HTTP isolated.
+// End-screen variants: thanks / cta / share / nothing.
+
+class _SurveyWidget extends StatefulWidget {
+  const _SurveyWidget({
+    required this.surveyId,
+    required this.responseId,
+    required this.questions,
+    required this.endScreen,
+    required this.siteKey,
+    required this.onSurveyPost,
+    required this.onCompleted,
+  });
+
+  final int surveyId;
+  final int responseId;
+  final List<Map<String, Object?>> questions;
+  final Map<String, Object?> endScreen;
+  final String? siteKey;
+  final SurveyPostCallback? onSurveyPost;
+  final VoidCallback onCompleted;
+
+  @override
+  State<_SurveyWidget> createState() => _SurveyWidgetState();
+}
+
+class _SurveyWidgetState extends State<_SurveyWidget> {
+  int _step = 0;
+  final Map<String, dynamic> _answers = {};
+  bool _completed = false;
+
+  static const _accent = Color(0xFF7C3AED);
+
+  bool _hasAnswer(Map<String, Object?> q) {
+    final v = _answers[q['id']];
+    if (v == null) return false;
+    if (v is String) return v.trim().isNotEmpty;
+    if (v is List) return v.isNotEmpty;
+    return true;
+  }
+
+  bool get _canAdvance {
+    if (_step >= widget.questions.length) return true;
+    final q = widget.questions[_step];
+    if (q['required'] != true) return true;
+    return _hasAnswer(q);
+  }
+
+  Future<void> _submitAnswerAndAdvance() async {
+    if (_step >= widget.questions.length) return;
+    final q = widget.questions[_step];
+    final qid = q['id'] as String?;
+    final qtype = q['type'] as String?;
+    final raw = _answers[qid];
+    if (qid != null && qtype != null && widget.onSurveyPost != null) {
+      Object? value;
+      if (raw is List) {
+        value = raw;
+      } else if (raw == null) {
+        value = '';
+      } else {
+        value = raw.toString();
+      }
+      // Fire and forget — UI shouldn't block on per-answer round-trips.
+      // Failures get logged at Transport level; the response row exists
+      // server-side so completion still correlates correctly.
+      unawaited(widget.onSurveyPost!({
+        'action': 'answer',
+        'site': widget.siteKey,
+        'response_id': widget.responseId,
+        'question_id': qid,
+        'question_type': qtype,
+        'value': value,
+      }));
+    }
+    setState(() => _step++);
+    if (_step >= widget.questions.length) {
+      // Mark complete on server.
+      if (widget.onSurveyPost != null) {
+        unawaited(widget.onSurveyPost!({
+          'action': 'complete',
+          'site': widget.siteKey,
+          'response_id': widget.responseId,
+          'end_screen_seen': 1,
+        }));
+      }
+      setState(() => _completed = true);
+      widget.onCompleted();
+      // Auto-close thanks-only after 2.5s; CTA / share keep the sheet open.
+      final endType = widget.endScreen['type'] as String? ?? 'thanks';
+      if (endType == 'thanks' || endType == 'nothing') {
+        Future.delayed(const Duration(milliseconds: 2500), () {
+          if (mounted) Navigator.of(context, rootNavigator: true).pop();
+        });
+      }
+    }
+  }
+
+  Widget _buildProgressBar() {
+    final total = widget.questions.length;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: List.generate(total, (i) {
+          Color c;
+          if (i < _step) {
+            c = _accent;
+          } else if (i == _step) {
+            c = _accent.withValues(alpha: 0.6);
+          } else {
+            c = const Color(0xFFE2E8F0);
+          }
+          return Expanded(
+            child: Container(
+              height: 3,
+              margin: EdgeInsets.only(right: i == total - 1 ? 0 : 4),
+              decoration: BoxDecoration(
+                color: c,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildQuestionBody(Map<String, Object?> q) {
+    final type = q['type'] as String? ?? '';
+    final qid = q['id'] as String? ?? '';
+
+    if (type == 'rating') {
+      final ratingMaxAny = q['rating_max'];
+      final rmax = ratingMaxAny is int ? ratingMaxAny : int.tryParse('$ratingMaxAny') ?? 5;
+      final start = rmax == 10 ? 0 : 1;
+      final selected = _answers[qid] as int?;
+      return Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          for (int v = start; v <= rmax; v++)
+            _RatingButton(
+              value: v,
+              selected: selected == v,
+              onTap: () => setState(() => _answers[qid] = v),
+            ),
+        ],
+      );
+    }
+
+    if (type == 'radio') {
+      final choices = (q['choices'] as List?)?.cast<String>() ?? const [];
+      final selected = _answers[qid] as String?;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final c in choices)
+            _ChoiceTile(
+              label: c,
+              selected: selected == c,
+              multi: false,
+              onTap: () => setState(() => _answers[qid] = c),
+            ),
+        ],
+      );
+    }
+
+    if (type == 'checkbox') {
+      final choices = (q['choices'] as List?)?.cast<String>() ?? const [];
+      final picked = (_answers[qid] as List<String>?) ?? <String>[];
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final c in choices)
+            _ChoiceTile(
+              label: c,
+              selected: picked.contains(c),
+              multi: true,
+              onTap: () => setState(() {
+                final cur = List<String>.from(picked);
+                if (cur.contains(c)) {
+                  cur.remove(c);
+                } else {
+                  cur.add(c);
+                }
+                _answers[qid] = cur;
+              }),
+            ),
+        ],
+      );
+    }
+
+    if (type == 'yesno') {
+      final selected = _answers[qid] as int?;
+      return Row(
+        children: [
+          Expanded(
+            child: _YesNoButton(
+              label: 'Yes',
+              selected: selected == 1,
+              onTap: () => setState(() => _answers[qid] = 1),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _YesNoButton(
+              label: 'No',
+              selected: selected == 0,
+              onTap: () => setState(() => _answers[qid] = 0),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // text
+    return TextField(
+      maxLines: 4,
+      maxLength: 2000,
+      decoration: const InputDecoration(
+        hintText: 'Tell us...',
+        border: OutlineInputBorder(),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: _accent, width: 1.5),
+        ),
+      ),
+      onChanged: (v) => setState(() => _answers[qid] = v),
+      controller: TextEditingController(text: (_answers[qid] as String?) ?? '')
+        ..selection = TextSelection.collapsed(
+          offset: ((_answers[qid] as String?) ?? '').length,
+        ),
+    );
+  }
+
+  Widget _buildEnd() {
+    final endType = widget.endScreen['type'] as String? ?? 'thanks';
+    final thanksText = widget.endScreen['thanks_text'] as String? ?? 'Thanks for your feedback!';
+    final ctaText = widget.endScreen['cta_text'] as String? ?? 'Learn more';
+    final ctaUrl = widget.endScreen['cta_url'] as String?;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Column(
+        children: [
+          Text(
+            thanksText,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          if (endType == 'cta' && ctaUrl != null && ctaUrl.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _accent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+              ),
+              child: Text(ctaText, style: const TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    return Container(
+      constraints: BoxConstraints(maxHeight: media.size.height * 0.85),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      padding: EdgeInsets.fromLTRB(22, 12, 22, 22 + media.viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          if (!_completed) _buildProgressBar(),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Builder(builder: (_) {
+                if (_completed) return _buildEnd();
+                final q = widget.questions[_step];
+                final required = q['required'] == true;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text.rich(
+                      TextSpan(
+                        text: q['label'] as String? ?? '',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0F172A),
+                          height: 1.4,
+                        ),
+                        children: required
+                            ? const [
+                                TextSpan(
+                                  text: ' *',
+                                  style: TextStyle(color: Color(0xFFEF4444)),
+                                ),
+                              ]
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildQuestionBody(q),
+                  ],
+                );
+              }),
+            ),
+          ),
+          if (!_completed) ...[
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (_step > 0)
+                  TextButton(
+                    onPressed: () => setState(() => _step--),
+                    child: const Text('Back'),
+                  )
+                else
+                  const SizedBox.shrink(),
+                ElevatedButton(
+                  onPressed: _canAdvance ? _submitAnswerAndAdvance : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _accent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  ),
+                  child: Text(
+                    _step == widget.questions.length - 1 ? 'Submit' : 'Next',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RatingButton extends StatelessWidget {
+  const _RatingButton({required this.value, required this.selected, required this.onTap});
+  final int value;
+  final bool selected;
+  final VoidCallback onTap;
+
+  static const _accent = Color(0xFF7C3AED);
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? _accent : const Color(0xFFF8FAFC),
+          border: Border.all(color: selected ? _accent : const Color(0xFFE2E8F0)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          '$value',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : const Color(0xFF0F172A),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChoiceTile extends StatelessWidget {
+  const _ChoiceTile({
+    required this.label,
+    required this.selected,
+    required this.multi,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final bool multi;
+  final VoidCallback onTap;
+
+  static const _accent = Color(0xFF7C3AED);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: selected ? _accent : const Color(0xFFF8FAFC),
+            border: Border.all(color: selected ? _accent : const Color(0xFFE2E8F0)),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                multi
+                    ? (selected ? Icons.check_box : Icons.check_box_outline_blank)
+                    : (selected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+                size: 20,
+                color: selected ? Colors.white : const Color(0xFF94A3B8),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: selected ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _YesNoButton extends StatelessWidget {
+  const _YesNoButton({required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  static const _accent = Color(0xFF7C3AED);
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: selected ? _accent : const Color(0xFFF8FAFC),
+          border: Border.all(color: selected ? _accent : const Color(0xFFE2E8F0)),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : const Color(0xFF0F172A),
+          ),
         ),
       ),
     );

@@ -176,6 +176,9 @@ class Dijji {
         onMessageEvent: (event, {properties}) {
           _queue!.enqueue(name: event, properties: properties);
         },
+        onSurveyPost: (body) => _transport!.postSurvey(body),
+        siteKey: effectiveConfig.siteKey,
+        visitorId: _identity!.visitorId,
       );
       _messages!.attach(_inbox!.messagesStream);
     }

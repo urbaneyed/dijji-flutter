@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.1.5-alpha · 2026-05-01
+
+### Added
+- **`in_app_survey`** — multi-step bottom sheet for the new Surveys pillar.
+  Supports 5 question types: rating (3/5/7/10-point), single-choice (radio),
+  multi-choice (checkbox), free text, yes/no. Multi-step navigation with
+  per-step progress bar, back/next, required-field gating. Posts answers
+  to `/t/survey` (start → answer × N → complete), with a `SurveyPostCallback`
+  injected from the host SDK so `MessageRenderer` stays free of HTTP.
+- End-screen variants: `thanks` (auto-dismiss after 2.5s), `cta`
+  (button stays open), `share`, `nothing`.
+- `Transport.postSurvey(body)` JSON helper added — same wire format as
+  `/t/survey` accepts on the server (now JSON-aware in addition to form).
+
+### Wire format
+- Server payload from `/t/app/inbox` is shape:
+  `{ kind: 'in_app_survey', config: { survey_id, name, questions[], end_screen{} } }`.
+- Client posts `{ action: 'start' | 'answer' | 'complete', site, survey_id?,
+  response_id?, question_id?, question_type?, value?, visitor_id? }`.
+
 ## 1.1.4-alpha · 2026-04-30
 
 Three new in-app survey/urgency formats — bringing the Flutter SDK to parity

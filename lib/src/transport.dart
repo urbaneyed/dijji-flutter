@@ -196,6 +196,26 @@ class Transport {
     }
   }
 
+  /// Survey ingestion. action ∈ {start, answer, complete}.
+  /// `start` returns a response_id; subsequent calls reference it.
+  Future<Map<String, Object?>?> postSurvey(Map<String, Object?> body) async {
+    final uri = Uri.parse('${_config.sanitizedEndpoint}/t/survey');
+    try {
+      final resp = await _client
+          .post(uri, headers: _headers(), body: jsonEncode(body))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode < 200 || resp.statusCode >= 300) {
+        DijjiLog.d('POST /t/survey -> ${resp.statusCode}');
+        return null;
+      }
+      final decoded = jsonDecode(resp.body);
+      return decoded is Map ? Map<String, Object?>.from(decoded) : null;
+    } catch (e) {
+      DijjiLog.d('POST /t/survey errored: $e');
+      return null;
+    }
+  }
+
   Future<bool> _post(String path, Map<String, Object?> body) async {
     final uri = Uri.parse('${_config.sanitizedEndpoint}$path');
     try {
